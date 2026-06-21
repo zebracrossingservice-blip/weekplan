@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZC 本週工作計畫生成器</title>
+    <title>ZC 本週工作計畫系統 v2</title>
     <style>
         :root {
             --primary-color: #2b5c43;
@@ -12,6 +12,7 @@
             --card-bg: #ffffff;
             --text-color: #333333;
             --border-color: #e2e8f0;
+            --danger-color: #e53e3e;
         }
 
         body {
@@ -24,7 +25,7 @@
         }
 
         .container {
-            max-width: 700px;
+            max-width: 750px;
             margin: 0 auto;
         }
 
@@ -74,7 +75,20 @@
             color: #4a5568;
         }
 
-        input[type="text"], input[type="date"], textarea {
+        .label-desc {
+            font-size: 13px;
+            color: #718096;
+            margin-bottom: 4px;
+        }
+
+        .danger-hint {
+            color: var(--danger-color);
+            font-weight: bold;
+            font-size: 13px;
+            margin-top: 4px;
+        }
+
+        input[type="text"], textarea, select {
             width: 100%;
             padding: 10px 12px;
             border: 1px solid var(--border-color);
@@ -84,7 +98,7 @@
             transition: border-color 0.2s;
         }
 
-        input[type="text"]:focus, input[type="date"]:focus, textarea:focus {
+        input[type="text"]:focus, textarea:focus, select:focus {
             outline: none;
             border-color: var(--primary-color);
         }
@@ -93,6 +107,81 @@
             resize: vertical;
             height: 80px;
         }
+
+        /* 彈出視窗樣式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 25px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+        .modal-btns {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        /* 每日工作排程樣式 */
+        .day-bucket {
+            background: #f8fafc;
+            border: 1px solid #edf2f7;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .day-title {
+            font-weight: bold;
+            color: #2d3748;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .btn-plus {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .task-item {
+            background: white;
+            border: 1px solid #e2e8f0;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-size: 14px;
+            position: relative;
+        }
+        .task-delete {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            color: #a0aec0;
+            cursor: pointer;
+            border: none;
+            background: none;
+        }
+        .task-delete:hover { color: var(--danger-color); }
 
         .btn {
             display: block;
@@ -108,10 +197,7 @@
             transition: background-color 0.2s;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-
-        .btn:hover {
-            background-color: var(--primary-hover);
-        }
+        .btn:hover { background-color: var(--primary-hover); }
 
         .preview-area {
             background-color: #f8fafc;
@@ -119,7 +205,6 @@
             border-radius: 8px;
             padding: 15px;
             white-space: pre-wrap;
-            font-family: inherit;
             font-size: 14px;
             color: #334155;
             margin-top: 15px;
@@ -128,17 +213,20 @@
 
         .toast {
             position: fixed;
-            bottom: 20px;
-            left: 50%;
+            bottom: 20px; left: 50%;
             transform: translateX(-50%);
             background-color: #333;
             color: white;
             padding: 12px 24px;
             border-radius: 30px;
             font-size: 14px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             display: none;
-            z-index: 1000;
+            z-index: 3000;
+        }
+        .radio-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 10px;
         }
     </style>
 </head>
@@ -147,22 +235,19 @@
 <div class="container">
     <header>
         <h1>📝 ZC 本週工作計畫系統</h1>
-        <p class="subtitle">簡化流程，明確目標，高效執行</p>
+        <p class="subtitle">優化排程與跨部門協調工具</p>
     </header>
 
     <div class="card">
         <div class="section-title">📍 基本資訊</div>
-        
         <div class="form-group">
             <label for="reportDate">回報日期</label>
-            <input type="text" id="reportDate" placeholder="例如：6/22 (一)">
+            <input type="text" id="reportDate">
         </div>
-
         <div class="form-group">
             <label for="reporter">回報人</label>
             <input type="text" id="reporter" placeholder="請輸入姓名 / 部門職稱">
         </div>
-
         <div class="form-group">
             <label for="reportTo">匯報對象</label>
             <input type="text" id="reportTo" placeholder="例如：倉儲主管 / 行銷主管 / 老闆 / ALY">
@@ -170,121 +255,289 @@
     </div>
 
     <div class="card">
-        <div class="section-title">🎯 一、本週核心目標（Top 3）</div>
+        <div class="section-title">📊 上週狀況回顧</div>
         <div class="form-group">
-            <label>目標 1</label>
-            <input type="text" id="target1" placeholder="核心任務 1，例如：完成端午連假出貨排程">
+            <label>一、上週週報表關鍵數據：</label>
+            <div class="label-desc">請直接複製貼上負責周報表的關鍵數據、業績、或KPI指標</div>
+            <textarea id="lastWeekData" placeholder="請在此貼上關鍵數據..."></textarea>
+            <div class="danger-hint">⚠️ 注意：若數據有危險/未達標，請在此特別註明打上！</div>
         </div>
+        
         <div class="form-group">
-            <label>目標 2</label>
-            <input type="text" id="target2" placeholder="核心任務 2，例如：完成7月新品上架視覺審核">
-        </div>
-        <div class="form-group">
-            <label>目標 3</label>
-            <input type="text" id="target3" placeholder="核心任務 3，例如：優化實體門市跨店調撥流程">
+            <label>二、上週未完成/延宕事項：</label>
+            <div class="radio-group">
+                <label><input type="radio" name="delayedRadio" value="none" checked onclick="toggleDelay(false)"> 皆已完成（無）</label>
+                <label><input type="radio" name="delayedRadio" value="have" onclick="toggleDelay(true)"> 有未完成事項</label>
+            </div>
+            <textarea id="delayText" readonly style="background-color: #f7fafc;" placeholder="若有延宕，請點選上方選項填寫原因。">無</textarea>
         </div>
     </div>
 
     <div class="card">
-        <div class="section-title">📅 二、主要執行項目與進度排程</div>
+        <div class="section-title">🎯 本週核心目標（Top 3）</div>
         <div class="form-group">
-            <label>週一重點工作</label>
-            <textarea id="todoMon" placeholder="請填寫今日重點工作..."></textarea>
+            <label>🥇 第一核心目標</label>
+            <input type="text" id="target1" placeholder="例如：完成端午連假出貨排程">
         </div>
         <div class="form-group">
-            <label>週二重點工作</label>
-            <textarea id="todoTue" placeholder="請填寫重點工作..."></textarea>
+            <label>🥈 第二核心目標</label>
+            <input type="text" id="target2" placeholder="例如：完成7月新品上架視覺審核">
         </div>
         <div class="form-group">
-            <label>週三重點工作</label>
-            <textarea id="todoWed" placeholder="請填寫重點工作..."></textarea>
+            <label>🥉 第三核心目標</label>
+            <input type="text" id="target3" placeholder="例如：優化實體門市跨店調撥流程">
         </div>
-        <div class="form-group">
-            <label>週四重點工作</label>
-            <textarea id="todoThu" placeholder="請填寫重點工作..."></textarea>
-        </div>
-        <div class="form-group">
-            <label>週五重點工作</label>
-            <textarea id="todoFri" placeholder="請填寫重點工作..."></textarea>
-        </div>
+    </div>
+
+    <div class="card">
+        <div class="section-title">📅 主要執行項目與進度排程</div>
+        <div class="label-desc" style="margin-bottom: 15px; color: var(--danger-color); font-weight: bold;">💡 備註：請依據重要程度「由上往下」安排工作，而非施作時間。</div>
+        
+        <div id="scheduleContainer"></div>
     </div>
 
     <div class="card">
         <div class="section-title">🤝 三、需要協助 / 跨部門協調事項</div>
         <div class="form-group">
-            <textarea id="assistText" placeholder="若無，請填「無」">無</textarea>
+            <textarea id="assistText">因以上有需要加班時數，故需要請公司安排人手協助 [請在此填寫需要協助之事項]</textarea>
         </div>
     </div>
 
     <button class="btn" onclick="generateAndCopy()">產生並複製工作計畫 🚀</button>
-
     <div id="preview" class="preview-area"></div>
+</div>
+
+<div id="delayModal" class="modal">
+    <div class="modal-content">
+        <h3 style="margin-top:0; color:var(--danger-color);">⚠️ 填寫未完成原因</h3>
+        <div class="form-group">
+            <label>未完成之事項與原因：</label>
+            <textarea id="modalReason" placeholder="請詳細說明延宕原因..."></textarea>
+        </div>
+        <div class="form-group">
+            <label>預計補回時間：</label>
+            <input type="text" id="modalTime" placeholder="例如：預計本週三前補齊">
+        </div>
+        <div class="modal-btns">
+            <button class="btn" style="width:auto; background:#718096;" onclick="closeDelayModal(false)">取消</button>
+            <button class="btn" style="width:auto;" onclick="closeDelayModal(true)">確認儲存</button>
+        </div>
+    </div>
+</div>
+
+<div id="taskModal" class="modal">
+    <div class="modal-content">
+        <h3 style="margin-top:0;" id="taskModalTitle">➕ 新增工作項目</h3>
+        <div class="form-group">
+            <label>工作內容 (重要度高者優先填寫)：</label>
+            <input type="text" id="modalTaskContent" placeholder="輸入今日重點工作...">
+        </div>
+        <div class="form-group">
+            <label>備註說明：</label>
+            <input type="text" id="modalTaskMemo" placeholder="選填，相關備註...">
+        </div>
+        <div class="form-group">
+            <label>預估耗時：</label>
+            <select id="modalTaskTime">
+                <option value="15 分鐘">15 分鐘</option>
+                <option value="30 分鐘">30 分鐘</option>
+                <option value="45 分鐘">45 分鐘</option>
+                <option value="1 小時">1 小時</option>
+                <option value="1.5 小時">1.5 小時</option>
+                <option value="2 小時">2 小時</option>
+                <option value="3 小時">3 小時</option>
+                <option value="4 小時">4 小時</option>
+            </select>
+        </div>
+        <div class="modal-btns">
+            <button class="btn" style="width:auto; background:#718096;" onclick="closeTaskModal(false)">取消</button>
+            <button class="btn" style="width:auto;" onclick="closeTaskModal(true)">加入排程</button>
+        </div>
+    </div>
 </div>
 
 <div id="toast" class="toast">📋 已複製工作計畫至剪貼簿！</div>
 
 <script>
-    // 自動預設今日日期與星期
+    const daysOfWeek = ['週一', '週二', '週三', '週四', '週五'];
+    const weeklyTasks = { '週一': [], '週二': [], '週三': [], '週四': [], '週五': [] };
+    let currentTargetDay = '';
+
     window.onload = function() {
+        // 初始化日期
         const today = new Date();
         const month = today.getMonth() + 1;
         const date = today.getDate();
         const days = ['日', '一', '二', '三', '四', '五', '六'];
-        const dayNum = today.getDay();
-        
-        document.getElementById('reportDate').value = `${month}/${date} (${days[dayNum]})`;
+        document.getElementById('reportDate').value = `${month}/${date} (${days[today.getDay()]})`;
+
+        // 渲染每日工作區塊
+        const container = document.getElementById('scheduleContainer');
+        daysOfWeek.forEach(day => {
+            const div = document.createElement('div');
+            div.className = 'day-bucket';
+            div.innerHTML = `
+                <div class="day-title">
+                    <span>${day} 進度排程</span>
+                    <button class="btn-plus" onclick="openTaskModal('${day}')">＋</button>
+                </div>
+                <div id="tasks-${day}">
+                    <div style="color:#a0aec0; font-size:13px;" id="empty-${day}">尚無安排工作，請點擊右方 ＋ 新增</div>
+                </div>
+            `;
+            container.appendChild(div);
+        });
     }
 
+    // 處理延宕事項彈窗
+    function toggleDelay(hasDelay) {
+        if (hasDelay) {
+            document.getElementById('delayModal').style.display = 'flex';
+        } else {
+            document.getElementById('delayText').value = '無';
+        }
+    }
+
+    function closeDelayModal(save) {
+        if (save) {
+            const reason = document.getElementById('modalReason').value;
+            const time = document.getElementById('modalTime').value;
+            if(reason || time) {
+                document.getElementById('delayText').value = `原因：${reason || '未填'} / 預計補回時間：${time || '未填'}`;
+            } else {
+                document.getElementById('delayText').value = '無';
+                document.querySelectorAll('input[name="delayedRadio"]')[0].checked = true;
+            }
+        } else {
+            if (document.getElementById('delayText').value === '無') {
+                document.querySelectorAll('input[name="delayedRadio"]')[0].checked = true;
+            }
+        }
+        document.getElementById('delayModal').style.display = 'none';
+    }
+
+    // 處理任務彈窗
+    function openTaskModal(day) {
+        currentTargetDay = day;
+        document.getElementById('taskModalTitle').textContent = `➕ 新增 ${day} 工作項目`;
+        document.getElementById('modalTaskContent').value = '';
+        document.getElementById('modalTaskMemo').value = '';
+        document.getElementById('modalTaskTime').value = '15 分鐘';
+        document.getElementById('taskModal').style.display = 'flex';
+    }
+
+    function closeTaskModal(save) {
+        if (save) {
+            const content = document.getElementById('modalTaskContent').value.trim();
+            const memo = document.getElementById('modalTaskMemo').value.trim();
+            const time = document.getElementById('modalTaskTime').value;
+
+            if (!content) {
+                alert('請輸入工作內容！');
+                return;
+            }
+
+            weeklyTasks[currentTargetDay].push({ content, memo, time });
+            renderTasks(currentTargetDay);
+        }
+        document.getElementById('taskModal').style.display = 'none';
+    }
+
+    function renderTasks(day) {
+        const box = document.getElementById(`tasks-${day}`);
+        box.innerHTML = '';
+        
+        if (weeklyTasks[day].length === 0) {
+            box.innerHTML = `<div style="color:#a0aec0; font-size:13px;" id="empty-${day}">尚無安排工作，請點擊右方 ＋ 新增</div>`;
+            return;
+        }
+
+        weeklyTasks[day].forEach((task, index) => {
+            const item = document.createElement('div');
+            item.className = 'task-item';
+            
+            // 重要度排序前三個給 EMOJI 符號
+            let emoji = '';
+            if (index === 0) emoji = '🥇 ';
+            else if (index === 1) emoji = '🥈 ';
+            else if (index === 2) emoji = '🥉 ';
+
+            const memoStr = task.memo ? ` (備註: ${task.memo})` : '';
+            item.innerHTML = `
+                <strong>${emoji}項目 ${index + 1}:</strong> ${task.content}${memoStr} 
+                <span style="color:var(--primary-color); font-weight:bold; margin-left:8px;">[⏱️ ${task.time}]</span>
+                <button class="task-delete" onclick="deleteTask('${day}', ${index})">❌</button>
+            `;
+            box.appendChild(item);
+        });
+    }
+
+    function deleteTask(day, index) {
+        weeklyTasks[day].splice(index, 1);
+        renderTasks(day);
+    }
+
+    // 產出與複製文字結果
     function generateAndCopy() {
-        // 取得各欄位數值
         const reportDate = document.getElementById('reportDate').value || '[未填寫]';
         const reporter = document.getElementById('reporter').value || '[姓名] / [部門職稱]';
-        const reportTo = document.getElementById('reportTo').value || '[未填寫]';
+        const reportTo = document.getElementById('reportTo').value || '[填寫您的對應主管]';
+        const lastWeekData = document.getElementById('lastWeekData').value || '[無數據資料]';
+        const delayText = document.getElementById('delayText').value || '無';
         
         const target1 = document.getElementById('target1').value || '[未填寫]';
         const target2 = document.getElementById('target2').value || '[未填寫]';
         const target3 = document.getElementById('target3').value || '[未填寫]';
-        
-        const todoMon = document.getElementById('todoMon').value || '[無]';
-        const todoTue = document.getElementById('todoTue').value || '[無]';
-        const todoWed = document.getElementById('todoWed').value || '[無]';
-        const todoThu = document.getElementById('todoThu').value || '[無]';
-        const todoFri = document.getElementById('todoFri').value || '[無]';
-        
         const assistText = document.getElementById('assistText').value || '無';
 
-        // 組合文字模板
+        // 串接每日任務
+        let scheduleOutput = '';
+        daysOfWeek.forEach(day => {
+            scheduleOutput += `- ${day}：\n`;
+            if (weeklyTasks[day].length === 0) {
+                scheduleOutput += `  [今日無安排重點工作]\n`;
+            } else {
+                weeklyTasks[day].forEach((task, index) => {
+                    let emoji = '';
+                    if (index === 0) emoji = '🥇 ';
+                    else if (index === 1) emoji = '🥈 ';
+                    else if (index === 2) emoji = '🥉 ';
+                    const memoStr = task.memo ? ` (備註: ${task.memo})` : '';
+                    scheduleOutput += `  ${emoji}項目 ${index+1}. ${task.content}${memoStr} 【預估耗時: ${task.time}】\n`;
+                });
+            }
+        });
+
+        // 組合完整文字模版
         const reportTemplate = `【本週工作計畫】
 
 回報日期：${reportDate}
 回報人：${reporter}
 匯報對象：${reportTo}
 
+一、上週週報表關鍵數據：
+${lastWeekData}
+
+二、上週未完成/延宕事項：
+- ${delayText}
+
 一、本週核心目標（Top 3）：
-1. ${target1}
-2. ${target2}
-3. ${target3}
+🥇 1. ${target1}
+🥈 2. ${target2}
+🥉 3. ${target3}
 
-二、主要執行項目與進度排程：
-- 週一：${todoMon}
-- 週二：${todoTue}
-- 週三：${todoWed}
-- 週四：${todoThu}
-- 週五：${todoFri}
-
+二、主要執行項目與進度排程（已依重要程度由上往下排序）：
+${scheduleOutput}
 三、需要協助/跨部門協調事項：
 - ${assistText}`;
 
-        // 顯示預報預覽區
         const previewDiv = document.getElementById('preview');
         previewDiv.textContent = reportTemplate;
         previewDiv.style.display = 'block';
 
-        // 複製到剪貼簿
         navigator.clipboard.writeText(reportTemplate).then(() => {
             showToast();
         }).catch(err => {
-            // 備用複製方案
             const textArea = document.createElement("textarea");
             textArea.value = reportTemplate;
             document.body.appendChild(textArea);
@@ -298,9 +551,7 @@
     function showToast() {
         const toast = document.getElementById('toast');
         toast.style.display = 'block';
-        setTimeout(() => {
-            toast.style.display = 'none';
-        }, 2500);
+        setTimeout(() => { toast.style.display = 'none'; }, 2500);
     }
 </script>
 
