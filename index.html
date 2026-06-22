@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZC 本週工作計畫系統 v2</title>
+    <title>ZC 本週工作計畫系統 v3</title>
     <style>
         :root {
             --primary-color: #2b5c43;
@@ -13,6 +13,7 @@
             --text-color: #333333;
             --border-color: #e2e8f0;
             --danger-color: #e53e3e;
+            --warning-bg: #fff5f5;
         }
 
         body {
@@ -25,7 +26,7 @@
         }
 
         .container {
-            max-width: 750px;
+            max-width: 800px;
             margin: 0 auto;
         }
 
@@ -71,7 +72,7 @@
         label {
             display: block;
             margin-bottom: 6px;
-            font-weight: 500;
+            font-weight: bold;
             color: #4a5568;
         }
 
@@ -108,29 +109,20 @@
             height: 80px;
         }
 
-        /* 彈出視窗樣式 */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.5);
-            z-index: 2000;
-            justify-content: center;
-            align-items: center;
-        }
-        .modal-content {
-            background-color: white;
-            padding: 25px;
-            border-radius: 8px;
-            width: 90%;
-            max-width: 500px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-        }
-        .modal-btns {
+        .radio-group {
             display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-top: 15px;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        /* 內嵌延宕區塊樣式 */
+        .delay-input-box {
+            background-color: #f8fafc;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+            display: none;
         }
 
         /* 每日工作排程樣式 */
@@ -139,49 +131,76 @@
             border: 1px solid #edf2f7;
             border-radius: 8px;
             padding: 15px;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
         .day-title {
             font-weight: bold;
             color: #2d3748;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            font-size: 16px;
+        }
+        .day-hours-badge {
+            font-size: 13px;
+            padding: 2px 8px;
+            border-radius: 20px;
+            background: #e2e8f0;
+            color: #4a5568;
+            margin-left: 10px;
+        }
+        .day-hours-badge.overtime {
+            background: var(--warning-bg);
+            color: var(--danger-color);
+            border: 1px solid var(--danger-color);
         }
         .btn-plus {
             background: var(--primary-color);
             color: white;
             border: none;
-            width: 28px;
-            height: 28px;
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
             cursor: pointer;
             font-weight: bold;
-            font-size: 16px;
+            font-size: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: background 0.2s;
         }
-        .task-item {
+        .btn-plus:hover { background: var(--primary-hover); }
+
+        /* 行置任務編輯器樣式 */
+        .inline-task-row {
+            display: grid;
+            grid-template-columns: 2.5fr 2fr 1.5fr auto;
+            gap: 10px;
             background: white;
-            border: 1px solid #e2e8f0;
-            padding: 10px;
-            border-radius: 6px;
-            margin-bottom: 8px;
-            font-size: 14px;
-            position: relative;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            margin-bottom: 10px;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
         }
-        .task-delete {
-            position: absolute;
-            right: 10px;
-            top: 10px;
+
+        .task-rank {
+            font-weight: bold;
+            font-size: 14px;
+            color: #4a5568;
+        }
+
+        .btn-delete {
+            background: none;
+            border: none;
             color: #a0aec0;
             cursor: pointer;
-            border: none;
-            background: none;
+            font-size: 16px;
+            padding: 5px;
         }
-        .task-delete:hover { color: var(--danger-color); }
+        .btn-delete:hover { color: var(--danger-color); }
 
         .btn {
             display: block;
@@ -223,10 +242,13 @@
             display: none;
             z-index: 3000;
         }
-        .radio-group {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 10px;
+
+        @media (max-width: 600px) {
+            .inline-task-row {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+            .btn-delete { text-align: right; color: var(--danger-color); }
         }
     </style>
 </head>
@@ -266,10 +288,20 @@
         <div class="form-group">
             <label>二、上週未完成/延宕事項：</label>
             <div class="radio-group">
-                <label><input type="radio" name="delayedRadio" value="none" checked onclick="toggleDelay(false)"> 皆已完成（無）</label>
-                <label><input type="radio" name="delayedRadio" value="have" onclick="toggleDelay(true)"> 有未完成事項</label>
+                <label><input type="radio" name="delayedRadio" value="none" checked onclick="toggleDelayInline(false)"> 皆已完成（無）</label>
+                <label><input type="radio" name="delayedRadio" value="have" onclick="toggleDelayInline(true)"> 有未完成事項</label>
             </div>
-            <textarea id="delayText" readonly style="background-color: #f7fafc;" placeholder="若有延宕，請點選上方選項填寫原因。">無</textarea>
+            
+            <div id="delayInputBox" class="delay-input-box">
+                <div class="form-group">
+                    <label style="font-size:14px; color:#4a5568;">未完成之事項與原因：</label>
+                    <input type="text" id="inlineDelayReason" placeholder="例如：因上週物流塞車導致盤點延宕">
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label style="font-size:14px; color:#4a5568;">預計補回時間：</label>
+                    <input type="text" id="inlineDelayTime" placeholder="例如：預計本週三前補齊">
+                </div>
+            </div>
         </div>
     </div>
 
@@ -291,7 +323,7 @@
 
     <div class="card">
         <div class="section-title">📅 主要執行項目與進度排程</div>
-        <div class="label-desc" style="margin-bottom: 15px; color: var(--danger-color); font-weight: bold;">💡 備註：請依據重要程度「由上往下」安排工作，而非施作時間。</div>
+        <div class="label-desc" style="margin-bottom: 15px; color: var(--primary-color); font-weight: bold;">💡 備註：請依據重要程度「由上往下」安排工作，而非施作時間。</div>
         
         <div id="scheduleContainer"></div>
     </div>
@@ -307,61 +339,18 @@
     <div id="preview" class="preview-area"></div>
 </div>
 
-<div id="delayModal" class="modal">
-    <div class="modal-content">
-        <h3 style="margin-top:0; color:var(--danger-color);">⚠️ 填寫未完成原因</h3>
-        <div class="form-group">
-            <label>未完成之事項與原因：</label>
-            <textarea id="modalReason" placeholder="請詳細說明延宕原因..."></textarea>
-        </div>
-        <div class="form-group">
-            <label>預計補回時間：</label>
-            <input type="text" id="modalTime" placeholder="例如：預計本週三前補齊">
-        </div>
-        <div class="modal-btns">
-            <button class="btn" style="width:auto; background:#718096;" onclick="closeDelayModal(false)">取消</button>
-            <button class="btn" style="width:auto;" onclick="closeDelayModal(true)">確認儲存</button>
-        </div>
-    </div>
-</div>
-
-<div id="taskModal" class="modal">
-    <div class="modal-content">
-        <h3 style="margin-top:0;" id="taskModalTitle">➕ 新增工作項目</h3>
-        <div class="form-group">
-            <label>工作內容 (重要度高者優先填寫)：</label>
-            <input type="text" id="modalTaskContent" placeholder="輸入今日重點工作...">
-        </div>
-        <div class="form-group">
-            <label>備註說明：</label>
-            <input type="text" id="modalTaskMemo" placeholder="選填，相關備註...">
-        </div>
-        <div class="form-group">
-            <label>預估耗時：</label>
-            <select id="modalTaskTime">
-                <option value="15 分鐘">15 分鐘</option>
-                <option value="30 分鐘">30 分鐘</option>
-                <option value="45 分鐘">45 分鐘</option>
-                <option value="1 小時">1 小時</option>
-                <option value="1.5 小時">1.5 小時</option>
-                <option value="2 小時">2 小時</option>
-                <option value="3 小時">3 小時</option>
-                <option value="4 小時">4 小時</option>
-            </select>
-        </div>
-        <div class="modal-btns">
-            <button class="btn" style="width:auto; background:#718096;" onclick="closeTaskModal(false)">取消</button>
-            <button class="btn" style="width:auto;" onclick="closeTaskModal(true)">加入排程</button>
-        </div>
-    </div>
-</div>
-
 <div id="toast" class="toast">📋 已複製工作計畫至剪貼簿！</div>
 
 <script>
     const daysOfWeek = ['週一', '週二', '週三', '週四', '週五'];
-    const weeklyTasks = { '週一': [], '週二': [], '週三': [], '週四': [], '週五': [] };
-    let currentTargetDay = '';
+    // 儲存每天的任務資料庫
+    const weeklyData = { '週一': [], '週二': [], '週三': [], '週四': [], '週五': [] };
+    // 時間對照分鐘數（用來計算是否超過8小時 = 480分鐘）
+    const timeValueMap = {
+        '15 分鐘': 15, '30 分鐘': 30, '45 分鐘': 45,
+        '1 小時': 60, '1.5 小時': 90, '2 小時': 120,
+        '3 小時': 180, '4 小時': 240
+    };
 
     window.onload = function() {
         // 初始化日期
@@ -371,144 +360,204 @@
         const days = ['日', '一', '二', '三', '四', '五', '六'];
         document.getElementById('reportDate').value = `${month}/${date} (${days[today.getDay()]})`;
 
-        // 渲染每日工作區塊
+        // 建立每日排程介面
         const container = document.getElementById('scheduleContainer');
         daysOfWeek.forEach(day => {
-            const div = document.createElement('div');
-            div.className = 'day-bucket';
-            div.innerHTML = `
+            const dayBox = document.createElement('div');
+            dayBox.className = 'day-bucket';
+            dayBox.innerHTML = `
                 <div class="day-title">
-                    <span>${day} 進度排程</span>
-                    <button class="btn-plus" onclick="openTaskModal('${day}')">＋</button>
+                    <div>
+                        <span>${day} 進度排程</span>
+                        <span id="badge-${day}" class="day-hours-badge">今日總計: 0 小時</span>
+                    </div>
+                    <button class="btn-plus" onclick="addInlineRow('${day}')">＋</button>
                 </div>
-                <div id="tasks-${day}">
-                    <div style="color:#a0aec0; font-size:13px;" id="empty-${day}">尚無安排工作，請點擊右方 ＋ 新增</div>
+                <div id="rows-container-${day}"></div>
+                <div id="alert-${day}" class="danger-hint" style="display:none; background:#fff5f5; padding:8px; border-radius:4px; border:1px dashed var(--danger-color);">
+                    ⚠️ 提示：當日工作排程已超過 8 小時，需與主管確認加班或是人力支援。
                 </div>
             `;
-            container.appendChild(div);
+            container.appendChild(dayBox);
+            // 預設每天先送一條空白格給員工填寫
+            addInlineRow(day);
         });
     }
 
-    // 處理延宕事項彈窗
-    function toggleDelay(hasDelay) {
-        if (hasDelay) {
-            document.getElementById('delayModal').style.display = 'flex';
-        } else {
-            document.getElementById('delayText').value = '無';
+    // 控制延宕事項顯示
+    function toggleDelayInline(show) {
+        document.getElementById('delayInputBox').style.display = show ? 'block' : 'none';
+    }
+
+    // 新增一列內嵌工作格子
+    function addInlineRow(day) {
+        const rowsContainer = document.getElementById(`rows-container-${day}`);
+        const rowIndex = weeklyData[day].length;
+
+        // 建立資料物件
+        const taskObj = { content: '', memo: '', time: '15 分鐘' };
+        weeklyData[day].push(taskObj);
+
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'inline-task-row';
+        rowDiv.id = `row-${day}-${rowIndex}`;
+
+        // 判斷前三個項目的階層符號
+        let rankLabel = `項目 ${rowIndex + 1}`;
+        if (rowIndex === 0) rankLabel = '🥇 項目 1';
+        else if (rowIndex === 1) rankLabel = '🥈 項目 2';
+        else if (rowIndex === 2) rankLabel = '🥉 項目 3';
+
+        rowDiv.innerHTML = `
+            <div style="display:flex; align-items:center; gap:8px;">
+                <span class="task-rank" id="rank-${day}-${rowIndex}">${rankLabel}:</span>
+                <input type="text" placeholder="工作內容" oninput="updateTaskData('${day}', ${rowIndex}, 'content', this.value)">
+            </div>
+            <input type="text" placeholder="備註 (選填)" oninput="updateTaskData('${day}', ${rowIndex}, 'memo', this.value)">
+            <select onchange="updateTaskData('${day}', ${rowIndex}, 'time', this.value)">
+                <option value="15 分鐘">15 分鐘</option>
+                <option value="30 分鐘">30 分鐘</option>
+                <option value="45 分鐘">45 分鐘</option>
+                <option value="1 小時">1 小時</option>
+                <option value="1.5 小時">1.5 小時</option>
+                <option value="2 小時">2 小時</option>
+                <option value="3 小時">3 小時</option>
+                <option value="4 小時">4 小時</option>
+            </select>
+            <button class="btn-delete" onclick="deleteInlineRow('${day}', ${rowIndex})">❌</button>
+        `;
+        rowsContainer.appendChild(rowDiv);
+        calculateDayHours(day);
+    }
+
+    // 即時更新資料快取
+    function updateTaskData(day, index, field, value) {
+        if(weeklyData[day][index]) {
+            weeklyData[day][index][field] = value;
+        }
+        if(field === 'time') {
+            calculateDayHours(day);
         }
     }
 
-    function closeDelayModal(save) {
-        if (save) {
-            const reason = document.getElementById('modalReason').value;
-            const time = document.getElementById('modalTime').value;
-            if(reason || time) {
-                document.getElementById('delayText').value = `原因：${reason || '未填'} / 預計補回時間：${time || '未填'}`;
-            } else {
-                document.getElementById('delayText').value = '無';
-                document.querySelectorAll('input[name="delayedRadio"]')[0].checked = true;
-            }
-        } else {
-            if (document.getElementById('delayText').value === '無') {
-                document.querySelectorAll('input[name="delayedRadio"]')[0].checked = true;
-            }
-        }
-        document.getElementById('delayModal').style.display = 'none';
-    }
-
-    // 處理任務彈窗
-    function openTaskModal(day) {
-        currentTargetDay = day;
-        document.getElementById('taskModalTitle').textContent = `➕ 新增 ${day} 工作項目`;
-        document.getElementById('modalTaskContent').value = '';
-        document.getElementById('modalTaskMemo').value = '';
-        document.getElementById('modalTaskTime').value = '15 分鐘';
-        document.getElementById('taskModal').style.display = 'flex';
-    }
-
-    function closeTaskModal(save) {
-        if (save) {
-            const content = document.getElementById('modalTaskContent').value.trim();
-            const memo = document.getElementById('modalTaskMemo').value.trim();
-            const time = document.getElementById('modalTaskTime').value;
-
-            if (!content) {
-                alert('請輸入工作內容！');
-                return;
-            }
-
-            weeklyTasks[currentTargetDay].push({ content, memo, time });
-            renderTasks(currentTargetDay);
-        }
-        document.getElementById('taskModal').style.display = 'none';
-    }
-
-    function renderTasks(day) {
-        const box = document.getElementById(`tasks-${day}`);
-        box.innerHTML = '';
+    // 刪除某一列
+    function deleteInlineRow(day, index) {
+        // 移除該筆資料
+        weeklyData[day].splice(index, 1);
         
-        if (weeklyTasks[day].length === 0) {
-            box.innerHTML = `<div style="color:#a0aec0; font-size:13px;" id="empty-${day}">尚無安排工作，請點擊右方 ＋ 新增</div>`;
-            return;
-        }
+        // 重新渲染該天的所有格子以確保序號正確
+        const rowsContainer = document.getElementById(`rows-container-${day}`);
+        rowsContainer.innerHTML = '';
+        
+        const tempArr = [...weeklyData[day]];
+        weeklyData[day] = []; // 清空重組
 
-        weeklyTasks[day].forEach((task, index) => {
-            const item = document.createElement('div');
-            item.className = 'task-item';
-            
-            // 重要度排序前三個給 EMOJI 符號
-            let emoji = '';
-            if (index === 0) emoji = '🥇 ';
-            else if (index === 1) emoji = '🥈 ';
-            else if (index === 2) emoji = '🥉 ';
+        tempArr.forEach((task, i) => {
+            weeklyData[day].push(task);
+            const rowDiv = document.createElement('div');
+            rowDiv.className = 'inline-task-row';
+            rowDiv.id = `row-${day}-${i}`;
 
-            const memoStr = task.memo ? ` (備註: ${task.memo})` : '';
-            item.innerHTML = `
-                <strong>${emoji}項目 ${index + 1}:</strong> ${task.content}${memoStr} 
-                <span style="color:var(--primary-color); font-weight:bold; margin-left:8px;">[⏱️ ${task.time}]</span>
-                <button class="task-delete" onclick="deleteTask('${day}', ${index})">❌</button>
+            let rankLabel = `項目 ${i + 1}`;
+            if (i === 0) rankLabel = '🥇 項目 1';
+            else if (i === 1) rankLabel = '🥈 項目 2';
+            else if (i === 2) rankLabel = '🥉 項目 3';
+
+            rowDiv.innerHTML = `
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="task-rank" id="rank-${day}-${i}">${rankLabel}:</span>
+                    <input type="text" value="${task.content}" placeholder="工作內容" oninput="updateTaskData('${day}', ${i}, 'content', this.value)">
+                </div>
+                <input type="text" value="${task.memo}" placeholder="備註 (選填)" oninput="updateTaskData('${day}', ${i}, 'memo', this.value)">
+                <select onchange="updateTaskData('${day}', ${i}, 'time', this.value)">
+                    ${['15 分鐘','30 分鐘','45 分鐘','1 小時','1.5 小時','2 小時','3 小時','4 小時'].map(t => `<option value="${t}" ${task.time === t ? 'selected' : ''}>${t}</option>`).join('')}
+                </select>
+                <button class="btn-delete" onclick="deleteInlineRow('${day}', ${i})">❌</button>
             `;
-            box.appendChild(item);
+            rowsContainer.appendChild(rowDiv);
         });
+
+        calculateDayHours(day);
     }
 
-    function deleteTask(day, index) {
-        weeklyTasks[day].splice(index, 1);
-        renderTasks(day);
+    // 計算當日總工時與超時警告
+    function calculateDayHours(day) {
+        let totalMinutes = 0;
+        weeklyData[day].forEach(task => {
+            totalMinutes += (timeValueMap[task.time] || 0);
+        });
+
+        const hours = (totalMinutes / 60).toFixed(1);
+        const badge = document.getElementById(`badge-${day}`);
+        const alertBox = document.getElementById(`alert-${day}`);
+
+        badge.textContent = `今日總計: ${hours} 小時`;
+
+        // 超過 8 小時 (480 分鐘) 開啟警告
+        if (totalMinutes > 480) {
+            badge.className = 'day-hours-badge overtime';
+            alertBox.style.display = 'block';
+        } else {
+            badge.className = 'day-hours-badge';
+            alertBox.style.display = 'none';
+        }
     }
 
-    // 產出與複製文字結果
+    // 彙整並生成複製文字
     function generateAndCopy() {
         const reportDate = document.getElementById('reportDate').value || '[未填寫]';
         const reporter = document.getElementById('reporter').value || '[姓名] / [部門職稱]';
         const reportTo = document.getElementById('reportTo').value || '[填寫您的對應主管]';
         const lastWeekData = document.getElementById('lastWeekData').value || '[無數據資料]';
-        const delayText = document.getElementById('delayText').value || '無';
         
+        // 取得延宕事項
+        let delayText = '無';
+        const isDelayed = document.querySelector('input[name="delayedRadio"]:checked').value === 'have';
+        if (isDelayed) {
+            const reason = document.getElementById('inlineDelayReason').value.trim();
+            const time = document.getElementById('inlineDelayTime').value.trim();
+            delayText = `原因：${reason || '未填'} / 預計補回時間：${time || '未填'}`;
+        }
+
         const target1 = document.getElementById('target1').value || '[未填寫]';
         const target2 = document.getElementById('target2').value || '[未填寫]';
         const target3 = document.getElementById('target3').value || '[未填寫]';
         const assistText = document.getElementById('assistText').value || '無';
 
-        // 串接每日任務
+        // 串接每日任務數據
         let scheduleOutput = '';
         daysOfWeek.forEach(day => {
-            scheduleOutput += `- ${day}：\n`;
-            if (weeklyTasks[day].length === 0) {
+            // 算天總時數
+            let totalMinutes = 0;
+            weeklyData[day].forEach(t => totalMinutes += (timeValueMap[t.time] || 0));
+            
+            // 超過 8 小時自動於標題補上提醒備註
+            let overtimeWarning = '';
+            if (totalMinutes > 480) {
+                overtimeWarning = ' ⚠️ (當日工作排程超過8小時，需與主管確認加班或是人力支援)';
+            }
+
+            scheduleOutput += `- ${day}：${overtimeWarning}\n`;
+            
+            // 過濾掉完全沒填內容的格子
+            const validTasks = weeklyData[day].filter(t => t.content.trim() !== '');
+
+            if (validTasks.length === 0) {
                 scheduleOutput += `  [今日無安排重點工作]\n`;
             } else {
-                weeklyTasks[day].forEach((task, index) => {
+                validTasks.forEach((task, index) => {
                     let emoji = '';
                     if (index === 0) emoji = '🥇 ';
                     else if (index === 1) emoji = '🥈 ';
                     else if (index === 2) emoji = '🥉 ';
-                    const memoStr = task.memo ? ` (備註: ${task.memo})` : '';
-                    scheduleOutput += `  ${emoji}項目 ${index+1}. ${task.content}${memoStr} 【預估耗時: ${task.time}】\n`;
+                    
+                    const memoStr = task.memo ? ` (備註: ${task.memo})` : ' (備註: 無)';
+                    scheduleOutput += `  ${emoji}項目 ${index + 1}: ${task.content}${memoStr} [⏱️ ${task.time}]\n`;
                 });
             }
         });
 
-        // 組合完整文字模版
+        // 最終組合完整文字模版
         const reportTemplate = `【本週工作計畫】
 
 回報日期：${reportDate}
@@ -531,10 +580,12 @@ ${scheduleOutput}
 三、需要協助/跨部門協調事項：
 - ${assistText}`;
 
+        // 顯示預覽
         const previewDiv = document.getElementById('preview');
         previewDiv.textContent = reportTemplate;
         previewDiv.style.display = 'block';
 
+        // 複製至剪貼簿
         navigator.clipboard.writeText(reportTemplate).then(() => {
             showToast();
         }).catch(err => {
